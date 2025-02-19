@@ -1,13 +1,31 @@
 import express from "express";
 import { trainModel, generateImage, GenerateImagesFromPack } from "common/types";
 import { prismaClient } from "db";
-import { s3,write,S3Client } from "bun";
+import { S3Client } from "bun";
+import { FalAIModel } from "./models/FalAIModel";
 
 const USER_ID = "123";
 
 const PORT = process.env.PORT || 8080;
+
+const falAiModel = new FalAIModel();
+
 const app = express();
 app.use(express.json());
+
+app.get("/pre-signed-url", async (req, res) => {
+  const  key = `models/${Date.now()}_{Math.random()}.zip`
+  const url = await S3Client.preSignUrl(key, {
+    accessKeyId:process.env.S3_ACCESS_KEY,
+    secretAccessKey:process.env.S3_SECRET_KEY,
+    bucket: process.env.BUCKET_NAME,
+    Expires: 60 * 5
+  })
+  res.json({
+    url,
+    key
+  })
+})
 
 app.post("/ai/training", async (req, res) => {
 
@@ -20,6 +38,7 @@ app.post("/ai/training", async (req, res) => {
     })
     return 
   }
+  const {request_id,response_url} = await falAiModel.trainModel(parsedBody.data.zipUrl, parsedBody.data.name)
   const data = await prismaClient.model.create({
     data: {
       name: req.body.name,
@@ -28,7 +47,9 @@ app.post("/ai/training", async (req, res) => {
       eyeColor: parsedBody.data.eyeColor,
       bald: parsedBody.data.bald,
       age: parsedBody.data.age,
-      userId: USER_ID
+      userId: USER_ID,
+      zipUrl: parsedBody.data.zipUrl,
+      falAiRequestId: request_id,
     }
   })
   res.status(200).json({
@@ -45,13 +66,26 @@ app.post("/ai/generate", async (req, res) => {
     })
     return
   }
+  const model = await prismaClient.model.findUnique({
+    where:{
+      id: parsedBody.data.modelId
+    }
+  })
+  if(!model || !model.tensorPath){
+    res.status(411).json({
+      message: "Model not found"
+    })
+    return
+  }
 
+  const {request_id,response_url} = await falAiModel.generateImage(parsedBody.data.prompt,model.tensorPath)
   const data = await prismaClient.outputImages.create({
     data: {
       prompt: parsedBody.data.prompt,
       userId: USER_ID,
       modelId: parsedBody.data.modelId,
-      imageUrl: ""
+      imageUrl: "",
+      falAiRequestId: request_id,
     }
   })
   res.status(200).json({
