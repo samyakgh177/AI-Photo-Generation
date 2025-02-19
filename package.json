@@ -20,5 +20,9 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "dependencies": {
+    "@fal-ai/client": "^1.2.3",
+    "next": "^15.1.7"
+  }
 }

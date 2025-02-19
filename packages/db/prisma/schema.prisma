@@ -1,0 +1,119 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(uuid())
+  username       String
+  profilePicture String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  models         Model[]
+}
+
+model Model {
+  id             String                  @id @default(uuid())
+  name           String
+  type           ModelTypeEnum
+  age            Int
+  ethnicity      EthnicityEnum
+  eyeColor       EyeColorEnum
+  bald           Boolean
+  userId         String
+  user           User                    @relation(fields: [userId], references: [id])
+  triggerWord    String?
+  tensorPath     String?
+  trainingStatus ModelTrainingStatusEnum @default(Pending)
+  trainingImages TrainingImages[]
+  outputImages   OutputImages[]
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  falAiRequestId String?
+  @@index([falAiRequestId])
+
+}
+
+model TrainingImages {
+  id       String @id @default(uuid())
+  imageUrl String
+  modelId  String
+  model    Model  @relation(fields: [modelId], references: [id])
+}
+
+enum OutputImageStatusEnum {
+  Pending
+  Generated
+  Failed
+}
+
+model OutputImages {
+  id             String                @id @default(uuid())
+  imageUrl       String                @default("")
+  modelId        String
+  userId         String
+  prompt         String
+  falAiRequestId String?
+  status         OutputImageStatusEnum @default(Pending)
+  model          Model                 @relation(fields: [modelId], references: [id])
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  @@index([falAiRequestId])
+}
+
+model Packs {
+  id      String        @id @default(uuid())
+  name    String
+  prompts PackPrompts[]
+}
+
+model PackPrompts {
+  id     String @id @default(uuid())
+  prompt String
+  packId String
+  pack   Packs  @relation(fields: [packId], references: [id])
+}
+
+enum ModelTypeEnum {
+  Man
+  Woman
+  Other
+}
+
+enum EthnicityEnum {
+  White
+  Black
+  Asian_American   @map("Asian american")
+  Middle_Eastern   @map("Middle eastern")
+  Native_American  @map("Native american")
+  Pacific_Islander @map("Pacific islander")
+  East_Asian       @map("East asian")
+  Indian
+  Other
+}
+
+enum EyeColorEnum {
+  Brown
+  Blue
+  Green
+  Hazel
+  Gray
+  Other
+}
+
+enum ModelTrainingStatusEnum {
+  Pending
+  Training
+  Completed
+  Failed
+}
