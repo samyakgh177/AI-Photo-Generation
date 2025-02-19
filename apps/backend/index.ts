@@ -66,6 +66,13 @@ app.post("/ai/generate", async (req, res) => {
     })
     return
   }
+  const prompts = await prismaClient.packPrompts.findMany({
+    where:{
+      packId: parsedBody.data.packId
+    }
+  })
+  let request_ids :{request_id:string}[] =  await Promise.all( prompts.map(async (prompts)=>falAiModel.generateImage(prompts.prompt,parsedBody.data.modelId)
+  ))
   const model = await prismaClient.model.findUnique({
     where:{
       id: parsedBody.data.modelId
